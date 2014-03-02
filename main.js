@@ -15,14 +15,17 @@ var main_state = {
 
   create: function() {
     game.add.sprite(0, 0, 'background');
-    crashable = game.add.group();
+    this.crashable = game.add.group();
 
     this.up_pipes = game.add.group();
     this.up_pipes.createMultiple(20, 'pipe-up');
     this.down_pipes = game.add.group();
     this.down_pipes.createMultiple(20, 'pipe-down');
 
-    this.ground = game.add.sprite(0, game.world.height-112, 'ground');
+    this.crashable.add(this.up_pipes);
+    this.crashable.add(this.down_pipes);
+
+    this.ground = this.crashable.create(0, game.world.height-112, 'ground');
     this.ground.body.immovable = true;
 
     this.bird = game.add.sprite(100, game.world.height/2, 'bird');
@@ -32,10 +35,18 @@ var main_state = {
     space_key.onDown.add(this.jump, this);
 
     this.timer = this.game.time.events.loop(1500, this.add_pipe, this);
+
+    // Score:
+    this.score = 0;
+    var font = {
+      font: "30px Impact",
+      fill: "#ffffff"
+    };
+    this.score_label = this.game.add.text(20, 20, "0", font);
   },
 
   update: function() {
-    game.physics.overlap(this.bird, this.ground, this.restart_game, null, this);
+    game.physics.overlap(this.bird, this.crashable, this.restart_game, null, this);
   },
 
   add_up_pipe: function(x, y) {
@@ -54,7 +65,6 @@ var main_state = {
 
   add_pipe: function() {
     var upperPipeY = Math.floor(Math.random()*-(game.world.height-pipeY-holeY));
-    console.log(upperPipeY);
     var lowerPipeY = pipeY+upperPipeY+holeY;
     this.add_up_pipe(game.world.width, upperPipeY);
     this.add_down_pipe(game.world.width, lowerPipeY);
