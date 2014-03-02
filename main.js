@@ -1,7 +1,7 @@
 var game = new Phaser.Game(288, 511, Phaser.AUTO, '');
 
 var realY = 399;
-var holeY = 100;
+var holeY = 125;
 var pipeY = 320;
 
 var main_state = {
@@ -30,6 +30,7 @@ var main_state = {
 
     this.bird = game.add.sprite(100, game.world.height/2, 'bird');
     this.bird.body.gravity.y = 1000;
+    this.bird.anchor.setTo(-0.2, 0.5);
 
     var space_key = this.game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
     space_key.onDown.add(this.jump, this);
@@ -46,7 +47,9 @@ var main_state = {
   },
 
   update: function() {
-    game.physics.overlap(this.bird, this.crashable, this.restart_game, null, this);
+    //game.physics.overlap(this.bird, this.crashable, this.restart_game, null, this);
+    if (this.bird.angle < 20)
+      this.bird.angle++;
   },
 
   add_up_pipe: function(x, y) {
@@ -64,7 +67,10 @@ var main_state = {
   },
 
   add_pipe: function() {
-    var upperPipeY = Math.floor(Math.random()*-(game.world.height-pipeY-holeY));
+    this.score++;
+    this.score_label.content = this.score;
+
+    var upperPipeY = Math.floor(Math.random()*-(pipeY));
     var lowerPipeY = pipeY+upperPipeY+holeY;
     this.add_up_pipe(game.world.width, upperPipeY);
     this.add_down_pipe(game.world.width, lowerPipeY);
@@ -73,6 +79,11 @@ var main_state = {
 
   jump: function() {
     this.bird.body.velocity.y = -350;
+    var animation = this.game.add.tween(this.bird);
+    animation.to({
+      angle: -20
+    }, 100);
+    animation.start();
   },
 
   restart_game: function() {
