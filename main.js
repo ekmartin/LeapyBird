@@ -1,22 +1,28 @@
-var game = new Phaser.Game(288, 511, Phaser.AUTO, '');
+var game = new Phaser.Game(576, 511, Phaser.AUTO, '');
 
 var realY = 399;
 var holeY = 125;
 var pipeY = 320;
+var pipeSpeed = -150;
+
+var controllerOptions = {
+  enableGestures: true
+}
 
 var main_state = {
   preload: function() {
-    game.load.image('background', 'assets/background-light.png');
+    game.load.image('background-large', 'assets/background-large.png');
     game.load.image('bird', 'assets/bird.png');
-    game.load.image('ground', 'assets/ground.png');
+    game.load.image('grounds', 'assets/grounds.png');
     game.load.image('pipe-up', 'assets/pipe-up.png');
     game.load.image('pipe-down', 'assets/pipe-down.png');
   },
 
   create: function() {
-    game.add.sprite(0, 0, 'background');
+    game.add.sprite(0, 0, 'background-large');
     this.crashable = game.add.group();
 
+    this.pipes = game.add.group();
     this.up_pipes = game.add.group();
     this.up_pipes.createMultiple(20, 'pipe-up');
     this.down_pipes = game.add.group();
@@ -25,8 +31,10 @@ var main_state = {
     this.crashable.add(this.up_pipes);
     this.crashable.add(this.down_pipes);
 
-    this.ground = this.crashable.create(0, game.world.height-112, 'ground');
-    this.ground.body.immovable = true;
+    this.grounds = game.add.group();
+    this.grounds.createMultiple(2, 'grounds');
+
+    this.crashable.add(this.grounds);
 
     this.bird = game.add.sprite(100, game.world.height/2, 'bird');
     this.bird.body.gravity.y = 1000;
@@ -35,7 +43,8 @@ var main_state = {
     var space_key = this.game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
     space_key.onDown.add(this.jump, this);
 
-    this.timer = this.game.time.events.loop(1500, this.add_pipe, this);
+    this.add_ground(0);
+    this.timer = this.game.time.events.loop(1300, this.add_pipe, this);
 
     // Score:
     this.score = 0;
@@ -47,34 +56,48 @@ var main_state = {
   },
 
   update: function() {
-    //game.physics.overlap(this.bird, this.crashable, this.restart_game, null, this);
-    if (this.bird.angle < 20)
+    game.physics.overlap(this.bird, this.crashable, this.restart_game, null, this);
+    if (this.grounds.countLiving() == 1) {
+      var ground = this.grounds.getFirstAlive();
+      this.add_ground(ground.body.x + ground.body.width);
+    }
+    if (this.bird.angle < 20) {
       this.bird.angle++;
+    }
+    if (!this.bird.inWorld) {
+      this.restart_game();
+    }
   },
 
   add_up_pipe: function(x, y) {
     var pipe = this.down_pipes.getFirstDead();
     pipe.reset(x, y);
-    pipe.body.velocity.x = -200;
+    pipe.body.velocity.x = pipeSpeed;
     pipe.outOfBoundsKill = true;
   },
 
   add_down_pipe: function(x, y) {
     var pipe = this.up_pipes.getFirstDead();
     pipe.reset(x, y);
-    pipe.body.velocity.x = -200;
+    pipe.body.velocity.x = pipeSpeed;
     pipe.outOfBoundsKill = true;
+  },
+
+  add_ground: function(x) {
+    var ground = this.grounds.getFirstDead();
+    ground.reset(x, game.world.height-112);
+    ground.body.velocity.x = pipeSpeed;
+    ground.outOfBoundsKill = true;
   },
 
   add_pipe: function() {
     this.score++;
     this.score_label.content = this.score;
 
-    var upperPipeY = Math.floor(Math.random()*-(pipeY));
+    var upperPipeY = Math.floor(Math.random()*-(pipeY/2))-100;
     var lowerPipeY = pipeY+upperPipeY+holeY;
     this.add_up_pipe(game.world.width, upperPipeY);
     this.add_down_pipe(game.world.width, lowerPipeY);
-    this.ground.bringToTop();
   },
 
   jump: function() {
