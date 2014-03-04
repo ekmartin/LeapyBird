@@ -5,9 +5,13 @@ var holeY = 125;
 var pipeY = 320;
 var pipeSpeed = -150;
 
-var controllerOptions = {
-  enableGestures: true
-}
+var yPos = null;
+var delta;
+var yLimit = 0;
+var jumpLimit = -20;
+
+var controller = new Leap.Controller();
+controller.connect();
 
 var main_state = {
   preload: function() {
@@ -52,7 +56,12 @@ var main_state = {
       font: "30px Impact",
       fill: "#ffffff"
     };
+    var debugFont = {
+      font: "15px Impact",
+      fill: "#ffffff"
+    };
     this.score_label = this.game.add.text(20, 20, "0", font);
+    this.debug_label = this.game.add.text(20, 60, "Her: ", debugFont);
   },
 
   update: function() {
@@ -66,6 +75,34 @@ var main_state = {
     }
     if (!this.bird.inWorld) {
       this.restart_game();
+    }
+    var frame = controller.frame();
+    if (frame.pointables.length > 0) {
+      var pointable = frame.pointables[0];
+      var pointPosition = pointable.tipPosition;
+
+      // Initalize:
+      if (yPos === null) {
+        yPos = pointPosition[1];
+        delta = 0;
+      }
+
+      // If the pointable is moving upwards, reset the delta:
+      if ((pointPosition[1] - yPos) > upLimit) {
+        delta = 0;
+      }
+      else {
+        // If not, add the downwards movement to the delta-tracker (jump when it gets above a value).
+        delta += (pointPosition[1] - yPos);
+      }
+
+      // If the pointable has moved more than 20 units down, jump.
+      if (delta < jumpLimit) {
+        this.jump();
+        delta = 0;
+      }
+      //this.debug_label.content = "d: " + delta + " Pos: " + pointPosition[1];
+      yPos = pointPosition[1];
     }
   },
 
