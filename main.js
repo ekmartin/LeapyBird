@@ -7,7 +7,7 @@ var pipeSpeed = -150;
 
 var yPos = null;
 var delta;
-var yLimit = 0;
+var upLimit = 0;
 var jumpLimit = -20;
 
 var controller = new Leap.Controller();
