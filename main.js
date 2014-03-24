@@ -1,19 +1,14 @@
 var game = new Phaser.Game(576, 511, Phaser.AUTO, '');
 
 var realY = 399;
-var holeY = 125;
+var holeY = 115;
 var pipeY = 320;
 var pipeSpeed = -150;
-
-var yPos = null;
-var delta;
-var upLimit = 0;
-var jumpLimit = -20;
 
 var controller = new Leap.Controller();
 controller.connect();
 
-var main_state = {
+var menu_state = {
   preload: function() {
     game.load.image('background-large', 'assets/background-large.png');
     game.load.image('bird', 'assets/bird.png');
@@ -24,13 +19,51 @@ var main_state = {
 
   create: function() {
     game.add.sprite(0, 0, 'background-large');
+
+    this.grounds = game.add.group();
+    this.grounds.createMultiple(2, 'grounds');
+    var ground = this.grounds.getFirstDead();
+    ground.reset(0, game.world.height-112);
+
+    var menuFont = {
+      font: "35px silkscreennormal",
+      fill: "#ffffff"
+    };
+
+    this.menu_label = this.game.add.text(80, 250, "Press Space to Jump", menuFont);
+    var space_key = this.game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+    space_key.onDown.add(this.start, this);
+
+    this.timer = this.game.time.events.loop(500, this.blink, this);
+  },
+
+  start: function() {
+    this.game.state.start('main');
+  },
+
+  blink: function() {
+    if (this.menu_label.content !== "") {
+      this.menu_label.content = "";
+    }
+    else {
+      this.menu_label.content = "Press Space to Jump";
+    }
+  }
+};
+
+var main_state = {
+  create: function() {
+    game.add.sprite(0, 0, 'background-large');
+
     this.crashable = game.add.group();
 
     this.pipes = game.add.group();
     this.up_pipes = game.add.group();
     this.up_pipes.createMultiple(20, 'pipe-up');
+    this.collision_pipes = game.add.group();
     this.down_pipes = game.add.group();
     this.down_pipes.createMultiple(20, 'pipe-down');
+
 
     this.crashable.add(this.up_pipes);
     this.crashable.add(this.down_pipes);
@@ -41,7 +74,7 @@ var main_state = {
     this.crashable.add(this.grounds);
 
     this.bird = game.add.sprite(100, game.world.height/2, 'bird');
-    this.bird.body.gravity.y = 1000;
+    this.bird.body.gravity.y = 1500;
     this.bird.anchor.setTo(-0.2, 0.5);
 
     var space_key = this.game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
@@ -52,20 +85,48 @@ var main_state = {
 
     // Score:
     this.score = 0;
+
     var font = {
-      font: "30px Impact",
+      font: "35px silkscreennormal",
       fill: "#ffffff"
     };
-    var debugFont = {
-      font: "15px Impact",
-      fill: "#ffffff"
+
+    var highscoreFont = {
+      font: "35px silkscreennormal",
+      fill: "#e5cb26"
     };
+    console.log(localStorage.getItem('ababirdHighscore'), "her");
+    if (!this.highscore) {
+      if (localStorage.getItem('ababirdHighscore')) {
+        this.highscore = JSON.parse(localStorage.getItem('ababirdHighscore')).highscore;
+      }
+      else {
+        this.highscore = "0";
+      }
+    }
+
+    this.highscore_label = this.game.add.text(this.game.world.width - 45, 20, this.highscore, highscoreFont);
     this.score_label = this.game.add.text(20, 20, "0", font);
-    this.debug_label = this.game.add.text(20, 60, "Her: ", debugFont);
+
+    if (!this.hasBegun) {
+      this.hasBegun = false;
+    }
   },
 
   update: function() {
     game.physics.overlap(this.bird, this.crashable, this.restart_game, null, this);
+
+    this.down_pipes.forEach(function(child) {
+      if (child.x < this.bird.x && !child.hasPassed) {
+        child.hasPassed = true;
+        this.score++;
+        this.score_label.content = this.score;
+      }
+      else if (child.x > this.bird.x) {
+        child.hasPassed = false;
+      }
+    }, this, true);
+
     if (this.grounds.countLiving() == 1) {
       var ground = this.grounds.getFirstAlive();
       this.add_ground(ground.body.x + ground.body.width);
@@ -76,6 +137,8 @@ var main_state = {
     if (!this.bird.inWorld) {
       this.restart_game();
     }
+
+
     var frame = controller.frame();
     if (frame.pointables.length > 0) {
       var pointable = frame.pointables[0];
@@ -106,9 +169,19 @@ var main_state = {
     }
   },
 
+  up_score: function(sprite1, sprite2) {
+    console.log(sprite2,"e");
+    sprite2.kill();
+    this.score++;
+    this.score_label.content = this.score;
+  },
+
   add_up_pipe: function(x, y) {
     var pipe = this.down_pipes.getFirstDead();
+    /*var collisionPipe = this.collision_pipes.getFirstDead();
+    collisionPipe.reset(x, 0, 1);*/
     pipe.reset(x, y);
+    //collisionPipe.body.velocity.x = pipeSpeed;
     pipe.body.velocity.x = pipeSpeed;
     pipe.outOfBoundsKill = true;
   },
@@ -120,6 +193,7 @@ var main_state = {
     pipe.outOfBoundsKill = true;
   },
 
+
   add_ground: function(x) {
     var ground = this.grounds.getFirstDead();
     ground.reset(x, game.world.height-112);
@@ -128,8 +202,8 @@ var main_state = {
   },
 
   add_pipe: function() {
-    this.score++;
-    this.score_label.content = this.score;
+    //this.score++;
+    //this.score_label.content = this.score;
 
     var upperPipeY = Math.floor(Math.random()*-(pipeY/2))-100;
     var lowerPipeY = pipeY+upperPipeY+holeY;
@@ -138,7 +212,7 @@ var main_state = {
   },
 
   jump: function() {
-    this.bird.body.velocity.y = -350;
+    this.bird.body.velocity.y = -400;
     var animation = this.game.add.tween(this.bird);
     animation.to({
       angle: -20
@@ -148,9 +222,15 @@ var main_state = {
 
   restart_game: function() {
     this.game.time.events.remove(this.timer);
+    if (this.highscore < this.score) {
+      this.highscore = this.score;
+      localStorage.setItem('ababirdHighscore', JSON.stringify({'highscore': this.highscore}));
+    }
+    this.highscore_label.content = this.highscore;
     this.game.state.start('main');
   }
-}
+};
 
+game.state.add('menu', menu_state);
 game.state.add('main', main_state);
-game.state.start('main');
+game.state.start('menu');
