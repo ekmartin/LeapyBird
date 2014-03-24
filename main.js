@@ -5,6 +5,11 @@ var holeY = 115;
 var pipeY = 320;
 var pipeSpeed = -150;
 
+var yPos = null;
+var delta;
+var upLimit = 0;
+var jumpLimit = -20;
+
 var controller = new Leap.Controller();
 controller.connect();
 
